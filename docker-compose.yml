@@ -1,0 +1,50 @@
+version: "3.9"
+services:
+  ca:
+    build: ./ca
+    container_name: devops-ca
+    volumes:
+      - ./ca/pki:/pki
+    networks:
+      - devnet
+  vpn:
+    build: ./vpn
+    container_name: devops-vpn
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "1194:1194/udp"
+    volumes:
+      - ./vpn/pki:/vpn-pki
+      - ./ca/pki:/ca-pki
+    depends_on:
+      - ca
+    networks:
+      - devnet
+  exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - devnet
+  monitor:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitor/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - devnet
+  backup:
+    build: ./backup
+    container_name: devops-backup
+    volumes:
+      - ./backup:/backup
+      - ./ca/pki:/data/ca
+      - ./vpn/pki:/data/vpn
+    networks:
+      - devnet
+networks:
+  devnet:
